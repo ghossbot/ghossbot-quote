@@ -1,0 +1,16 @@
+{
+  "name": "ghossbot-quote",
+  "version": "1.0.0",
+  "description": "API para generar imágenes Quote para GhossBot",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.65",
+    "express": "^4.21.2"
+  }
+}

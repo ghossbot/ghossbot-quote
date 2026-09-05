@@ -67,7 +67,11 @@ app.post("/quote", async (req, res) => {
     const username = req.body.username || "Usuario";
     const avatar = req.body.avatar || "";
 
-    if (!text) {
+    if (!text || !username || !avatar) {
+  return res.status(400).json({
+    error: "Faltan datos. Se requiere text, username y avatar."
+  });
+    }
       return res.status(400).json({
         success: false,
         error: "Falta el texto"

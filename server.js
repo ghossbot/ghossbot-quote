@@ -63,9 +63,9 @@ app.get("/quote/:id.png", (req, res) => {
 
 app.post("/quote", async (req, res) => {
   try {
-    const text = req.body.text;
+    const text = req.body.text || "";
     const username = req.body.username || "Usuario";
-    const avatar = req.body.avatar;
+    const avatar = req.body.avatar || "";
 
     if (!text) {
       return res.status(400).json({

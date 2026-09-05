@@ -4,15 +4,12 @@ const crypto = require("crypto");
 
 const app = express();
 
-app.use(express.urlencoded({ extended: true, limit: "2mb" }));
-app.use(express.json({ limit: "2mb" }));
-
 const PORT = process.env.PORT || 10000;
 
 const quotes = new Map();
 
 function wrapText(ctx, text, maxWidth) {
-  const words = String(text || "").split(/\s+/);
+  const words = String(text).split(/\s+/);
   const lines = [];
   let line = "";
 
@@ -32,176 +29,42 @@ function wrapText(ctx, text, maxWidth) {
   return lines;
 }
 
+// Página principal
 app.get("/", (req, res) => {
   res.send(`
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GhossBot Quote API</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
-<body style="font-family:Arial;text-align:center;padding:50px">
+<body style="font-family:Arial;text-align:center;padding:40px">
 <h1>GhossBot Quote API ✅</h1>
 <p>La API está funcionando.</p>
-<p>Endpoint: <b>POST /quote</b></p>
+<p>Endpoint: <b>GET /quote</b></p>
 </body>
 </html>
 `);
 });
 
-app.get("/quote/:id.png", (req, res) => {
-  const image = quotes.get(req.params.id);
+// GENERAR QUOTE POR GET
+app.get("/quote", async (req, res) => {
 
-  if (!image) {
-    return res.status(404).send("Quote no encontrada");
-  }
-
-  res.setHeader("Content-Type", "image/png");
-  res.send(image);
-});
-
-app.post("/quote", async (req, res) => {
   try {
-    const text = req.body.text || "";
-    const username = req.body.username || "Usuario";
-    const avatar = req.body.avatar || "";
+
+    const text = req.query.text;
+    const username = req.query.username;
+    const avatar = req.query.avatar;
 
     if (!text || !username || !avatar) {
-  return res.status(400).json({
-    error: "Faltan datos. Se requiere text, username y avatar."
-  });
-    }
       return res.status(400).json({
         success: false,
-        error: "Falta el texto"
+        error: "Faltan datos"
       });
     }
 
-    const canvas = createCanvas(1600, 900);
-    const ctx = canvas.getContext("2d");
-
-    // Fondo
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, 1600, 900);
-
-    // Barra superior
-    ctx.fillStyle = "#111111";
-    ctx.fillRect(0, 0, 1600, 90);
-
-    // Avatar
-    if (avatar) {
-      try {
-        const image = await loadImage(avatar);
-
-        ctx.save();
-
-        ctx.beginPath();
-        ctx.arc(210, 450, 145, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.clip();
-
-        ctx.filter = "grayscale(100%)";
-        ctx.drawImage(image, 65, 305, 290, 290);
-
-        ctx.restore();
-
-        ctx.strokeStyle = "#111111";
-        ctx.lineWidth = 6;
-
-        ctx.beginPath();
-        ctx.arc(210, 450, 145, 0, Math.PI * 2);
-        ctx.stroke();
-
-      } catch (error) {
-        console.log("No se pudo cargar el avatar:", error.message);
-      }
-    }
-
-    // Texto
-    ctx.fillStyle = "#111111";
-    ctx.font = "bold 56px Arial";
-
-    const lines = wrapText(ctx, text, 950).slice(0, 9);
-
-    let y = 230;
-
-    for (const line of lines) {
-      ctx.fillText(line, 450, y);
-      y += 70;
-    }
-
-    // Separador
-    ctx.fillStyle = "#111111";
-    ctx.fillRect(450, y + 20, 950, 4);
-
-    // Usuario
-    ctx.font = "bold 36px Arial";
-    ctx.fillText("— " + username, 450, y + 90);
-
-    // Marca
-    ctx.font = "24px Arial";
-    ctx.fillStyle = "#777777";
-    ctx.fillText("GhossBot • Quote", 450, 820);
-
-    const buffer = canvas.toBuffer("image/png");
-
-    const id = crypto.randomBytes(12).toString("hex");
-
-    quotes.set(id, buffer);
-
-    // Elimina la imagen después de 10 minutos
-    setTimeout(() => {
-      quotes.delete(id);
-    }, 10 * 60 * 1000);
-
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
-
-    res.json({
-      success: true,
-      url: `${baseUrl}/quote/${id}.png`
-    });
-
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`GhossBot Quote API funcionando en puerto ${PORT}`);
-});  return lines;
-}
-
-app.get("/", (req, res) => {
-  res.send("GhossBot Quote API funcionando ✅");
-});
-
-app.get("/quote/:id.png", (req, res) => {
-  const quote = quotes.get(req.params.id);
-
-  if (!quote) {
-    return res.status(404).send("Quote no encontrada");
-  }
-
-  res.setHeader("Content-Type", "image/png");
-  res.send(quote);
-});
-
-app.post("/quote", async (req, res) => {
-  try {
-    const { text, username, avatar } = req.body;
-
-    if (!text) {
-      return res.status(400).json({
-        error: "Falta el texto"
-      });
-    }
-
+    // Crear imagen
     const canvas = createCanvas(1600, 900);
     const ctx = canvas.getContext("2d");
 
@@ -211,131 +74,181 @@ app.post("/quote", async (req, res) => {
 
     // Barra negra superior
     ctx.fillStyle = "#111111";
-    ctx.fillRect(0, 0, 1600, 100);
+    ctx.fillRect(0, 0, 1600, 90);
 
-    // Texto principal
+    // AVATAR
+    try {
+
+      const image = await loadImage(avatar);
+
+      ctx.save();
+
+      ctx.beginPath();
+      ctx.arc(210, 450, 145, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+
+      // Blanco y negro
+      ctx.filter = "grayscale(100%)";
+
+      ctx.drawImage(
+        image,
+        65,
+        305,
+        290,
+        290
+      );
+
+      ctx.restore();
+
+      // Borde
+      ctx.strokeStyle = "#111111";
+      ctx.lineWidth = 6;
+
+      ctx.beginPath();
+      ctx.arc(210, 450, 145, 0, Math.PI * 2);
+      ctx.stroke();
+
+    } catch (error) {
+
+      console.log(
+        "Error cargando avatar:",
+        error.message
+      );
+
+    }
+
+    // TEXTO
     ctx.fillStyle = "#111111";
-    ctx.font = "bold 58px Arial";
 
-    const lines = wrapText(ctx, text, 950).slice(0, 9);
+    ctx.font = "bold 56px Arial";
 
-    let y = 250;
+    const lines = wrapText(
+      ctx,
+      text,
+      950
+    ).slice(0, 9);
+
+    let y = 230;
 
     for (const line of lines) {
-      ctx.fillText(line, 420, y);
-      y += 72;
+
+      ctx.fillText(
+        line,
+        450,
+        y
+      );
+
+      y += 70;
     }
 
-    // Línea separadora
+    // Línea
     ctx.fillStyle = "#111111";
-    ctx.fillRect(420, y + 20, 950, 4);
+
+    ctx.fillRect(
+      450,
+      y + 20,
+      950,
+      4
+    );
 
     // Nombre
-    ctx.font = "bold 38px Arial";
-    ctx.fillText("— " + (username || "Usuario"), 420, y + 90);
+    ctx.font = "bold 36px Arial";
 
-    // Texto GhossBot
+    ctx.fillText(
+      "— " + username,
+      450,
+      y + 90
+    );
+
+    // Marca
     ctx.font = "24px Arial";
+
     ctx.fillStyle = "#777777";
-    ctx.fillText("GhossBot • Quote", 420, 820);
 
-    // Avatar
-    if (avatar) {
-      try {
-        const image = await loadImage(avatar);
+    ctx.fillText(
+      "GhossBot • Quote",
+      450,
+      820
+    );
 
-        ctx.save();
+    // PNG
+    const buffer =
+      canvas.toBuffer("image/png");
 
-        ctx.beginPath();
-        ctx.arc(190, 450, 135, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.clip();
-
-        // Imagen en blanco y negro
-        ctx.filter = "grayscale(100%)";
-        ctx.drawImage(image, 55, 315, 270, 270);
-
-        ctx.restore();
-
-        // Borde del avatar
-        ctx.strokeStyle = "#111111";
-        ctx.lineWidth = 6;
-
-        ctx.beginPath();
-        ctx.arc(190, 450, 135, 0, Math.PI * 2);
-        ctx.stroke();
-      } catch (error) {
-        console.log("No se pudo cargar el avatar");
-      }
-    }
-
-    const buffer = canvas.toBuffer("image/png");
-
-    const id = crypto.randomBytes(12).toString("hex");
+    // ID
+    const id =
+      crypto.randomBytes(12).toString("hex");
 
     quotes.set(id, buffer);
 
-    // Borrar automáticamente después de 10 minutos
+    // Borrar después de 10 minutos
     setTimeout(() => {
+
       quotes.delete(id);
+
     }, 10 * 60 * 1000);
 
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const baseUrl =
+      `${req.protocol}://${req.get("host")}`;
 
     res.json({
+
       success: true,
-      url: `${baseUrl}/quote/${id}.png`
+
+      url:
+        `${baseUrl}/quote/${id}.png`
+
     });
 
   } catch (error) {
+
     console.error(error);
 
     res.status(500).json({
-      error: "No se pudo generar el quote"
+
+      success: false,
+
+      error: error.message
+
     });
+
   }
+
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`GhossBot Quote API funcionando en puerto ${PORT}`);
-});    // Escala de grises usando filtro Canvas
-    ctx.filter = "grayscale(100%)";
-    ctx.drawImage(image, avatarX, avatarY, avatarSize, avatarSize);
-    ctx.restore();
+// MOSTRAR IMAGEN
+app.get("/quote/:id.png", (req, res) => {
 
-    // Borde del avatar
-    ctx.strokeStyle = "#111111";
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.arc(
-      avatarX + avatarSize / 2,
-      avatarY + avatarSize / 2,
-      avatarSize / 2,
-      0,
-      Math.PI * 2
+  const image =
+    quotes.get(req.params.id);
+
+  if (!image) {
+
+    return res
+      .status(404)
+      .send("Imagen no encontrada");
+
+  }
+
+  res.setHeader(
+    "Content-Type",
+    "image/png"
+  );
+
+  res.send(image);
+
+});
+
+// SERVIDOR
+app.listen(
+  PORT,
+  "0.0.0.0",
+  () => {
+
+    console.log(
+      `GhossBot Quote API funcionando en puerto ${PORT}`
     );
-    ctx.stroke();
 
-    // Nombre
-    ctx.fillStyle = "#111111";
-    ctx.font = "bold 48px Arial";
-    ctx.fillText(username, avatarX + avatarSize + 45, avatarY + 55);
-
-    ctx.fillStyle = "#777777";
-    ctx.font = "30px Arial";
-    ctx.fillText("GhossBot • Quote", avatarX + avatarSize + 45, avatarY + 120);
-
-    res.setHeader("Content-Type", "image/png");
-    res.setHeader("Cache-Control", "no-store");
-    res.send(canvas.toBuffer("image/png"));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      error: "No se pudo generar la quote."
-    });
   }
-});
-
-app.listen(PORT, () => {
-  console.log(`GhossBot Quote API escuchando en el puerto ${PORT}`);
-});
+);

@@ -1,28 +1,64 @@
 const express = require("express");
-const { createCanvas, loadImage } = require("@napi-rs/canvas");
+const {
+  createCanvas,
+  loadImage,
+  GlobalFonts
+} = require("@napi-rs/canvas");
+
 const crypto = require("crypto");
+const path = require("path");
 
 const app = express();
-
 const PORT = process.env.PORT || 10000;
 
-// Guardamos temporalmente las imágenes generadas
 const quotes = new Map();
 
 
-// ======================================================
-// PÁGINA PRINCIPAL
-// ======================================================
+// ================================
+// FUENTE DE EMOJIS
+// ================================
+
+const emojiFont = path.join(
+  __dirname,
+  "fonts",
+  "NotoEmoji.ttf"
+);
+
+try {
+  GlobalFonts.registerFromPath(
+    emojiFont,
+    "Noto Emoji"
+  );
+
+  console.log("Fuente Noto Emoji cargada correctamente.");
+} catch (error) {
+  console.log(
+    "No se pudo cargar Noto Emoji:",
+    error.message
+  );
+}
+
+
+// ================================
+// PAGINA PRINCIPAL
+// ================================
 
 app.get("/", (req, res) => {
   res.send(`
     <!DOCTYPE html>
+
     <html lang="es">
+
     <head>
       <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+      >
+
       <title>GhossBot Quote</title>
     </head>
+
     <body style="
       background:#222;
       color:white;
@@ -30,18 +66,28 @@ app.get("/", (req, res) => {
       text-align:center;
       padding:40px;
     ">
+
       <h1>GhossBot Quote ✅</h1>
-      <p>La API está funcionando correctamente.</p>
-      <p>Endpoint: <b>GET /quote</b></p>
+
+      <p>
+        La API está funcionando correctamente.
+      </p>
+
+      <p>
+        Endpoint:
+        <b>GET /quote</b>
+      </p>
+
     </body>
+
     </html>
   `);
 });
 
 
-// ======================================================
-// CREAR QUOTE
-// ======================================================
+// ================================
+// GENERAR QUOTE
+// ================================
 
 app.get("/quote", async (req, res) => {
 
@@ -52,105 +98,206 @@ app.get("/quote", async (req, res) => {
     const username = req.query.username || "";
     const avatar = req.query.avatar || "";
 
-    if (!text || !nickname || !username || !avatar) {
+
+    if (
+      !text ||
+      !nickname ||
+      !username ||
+      !avatar
+    ) {
+
       return res.status(400).json({
-        error: "Faltan datos. Se requiere text, nickname, username y avatar."
+        error:
+          "Faltan datos. Se requiere text, nickname, username y avatar."
       });
+
     }
 
 
-    // ==================================================
-    // DIMENSIONES
-    // ==================================================
+    // ================================
+    // CANVAS
+    // ================================
 
     const width = 1600;
     const height = 900;
 
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext("2d");
+    const canvas =
+      createCanvas(width, height);
+
+    const ctx =
+      canvas.getContext("2d");
 
 
-    // ==================================================
+    // ================================
     // FONDO
-    // ==================================================
+    // ================================
 
     ctx.fillStyle = "#8d8d8d";
-    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillRect(
+      0,
+      0,
+      width,
+      height
+    );
 
 
-    // ==================================================
-    // DISCO DE VINILO
-    // ==================================================
+    // ================================
+    // DISCO
+    // ================================
 
     const vinylX = 1290;
     const vinylY = 450;
     const vinylRadius = 410;
 
-    // Sombra
+
+    // sombra
+
     ctx.beginPath();
-    ctx.arc(vinylX + 12, vinylY + 15, vinylRadius, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
-    ctx.fill();
 
-
-    // Disco
-    const vinylGradient = ctx.createRadialGradient(
-      vinylX,
-      vinylY,
-      20,
-      vinylX,
-      vinylY,
-      vinylRadius
+    ctx.arc(
+      vinylX + 12,
+      vinylY + 15,
+      vinylRadius,
+      0,
+      Math.PI * 2
     );
 
-    vinylGradient.addColorStop(0, "#303030");
-    vinylGradient.addColorStop(0.35, "#111111");
-    vinylGradient.addColorStop(0.7, "#050505");
-    vinylGradient.addColorStop(1, "#000000");
+    ctx.fillStyle =
+      "rgba(0,0,0,0.25)";
 
-    ctx.beginPath();
-    ctx.arc(vinylX, vinylY, vinylRadius, 0, Math.PI * 2);
-    ctx.fillStyle = vinylGradient;
     ctx.fill();
 
 
-    // Surcos del disco
-    for (let r = 40; r < vinylRadius; r += 16) {
+    // degradado
+
+    const vinylGradient =
+      ctx.createRadialGradient(
+        vinylX,
+        vinylY,
+        20,
+        vinylX,
+        vinylY,
+        vinylRadius
+      );
+
+    vinylGradient.addColorStop(
+      0,
+      "#303030"
+    );
+
+    vinylGradient.addColorStop(
+      0.35,
+      "#111111"
+    );
+
+    vinylGradient.addColorStop(
+      0.7,
+      "#050505"
+    );
+
+    vinylGradient.addColorStop(
+      1,
+      "#000000"
+    );
+
+
+    ctx.beginPath();
+
+    ctx.arc(
+      vinylX,
+      vinylY,
+      vinylRadius,
+      0,
+      Math.PI * 2
+    );
+
+    ctx.fillStyle =
+      vinylGradient;
+
+    ctx.fill();
+
+
+    // surcos
+
+    for (
+      let r = 40;
+      r < vinylRadius;
+      r += 16
+    ) {
 
       ctx.beginPath();
-      ctx.arc(vinylX, vinylY, r, 0, Math.PI * 2);
 
-      ctx.strokeStyle = `rgba(255,255,255,${0.025 + (r % 32) / 3000})`;
+      ctx.arc(
+        vinylX,
+        vinylY,
+        r,
+        0,
+        Math.PI * 2
+      );
+
+      ctx.strokeStyle =
+        `rgba(255,255,255,${
+          0.025 +
+          (r % 32) / 3000
+        })`;
+
       ctx.lineWidth = 2;
 
       ctx.stroke();
     }
 
 
-    // Centro del disco
-    ctx.beginPath();
-    ctx.arc(vinylX, vinylY, 145, 0, Math.PI * 2);
-    ctx.fillStyle = "#303030";
-    ctx.fill();
+    // centro del disco
 
     ctx.beginPath();
-    ctx.arc(vinylX, vinylY, 5, 0, Math.PI * 2);
-    ctx.fillStyle = "#999";
+
+    ctx.arc(
+      vinylX,
+      vinylY,
+      145,
+      0,
+      Math.PI * 2
+    );
+
+    ctx.fillStyle =
+      "#303030";
+
     ctx.fill();
 
 
-    // ==================================================
-    // HOJA
-    // ==================================================
+    ctx.beginPath();
+
+    ctx.arc(
+      vinylX,
+      vinylY,
+      5,
+      0,
+      Math.PI * 2
+    );
+
+    ctx.fillStyle =
+      "#999";
+
+    ctx.fill();
+
+
+    // ================================
+    // PAPEL
+    // ================================
 
     const paperX = 70;
     const paperY = 80;
+
     const paperWidth = 1030;
     const paperHeight = 700;
 
 
-    // Sombra
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    // sombra
+
+    ctx.fillStyle =
+      "rgba(0,0,0,0.25)";
+
     ctx.fillRect(
       paperX + 15,
       paperY + 18,
@@ -159,19 +306,34 @@ app.get("/quote", async (req, res) => {
     );
 
 
-    // Papel
-    const paperGradient = ctx.createLinearGradient(
+    // papel
+
+    const paperGradient =
+      ctx.createLinearGradient(
+        0,
+        paperY,
+        0,
+        paperY + paperHeight
+      );
+
+    paperGradient.addColorStop(
       0,
-      paperY,
-      0,
-      paperY + paperHeight
+      "#ffffff"
     );
 
-    paperGradient.addColorStop(0, "#ffffff");
-    paperGradient.addColorStop(0.6, "#eeeeee");
-    paperGradient.addColorStop(1, "#d2d2d2");
+    paperGradient.addColorStop(
+      0.6,
+      "#eeeeee"
+    );
 
-    ctx.fillStyle = paperGradient;
+    paperGradient.addColorStop(
+      1,
+      "#d2d2d2"
+    );
+
+
+    ctx.fillStyle =
+      paperGradient;
 
     ctx.fillRect(
       paperX,
@@ -181,8 +343,9 @@ app.get("/quote", async (req, res) => {
     );
 
 
-    // Borde exterior
-    ctx.strokeStyle = "#bdbdbd";
+    ctx.strokeStyle =
+      "#bdbdbd";
+
     ctx.lineWidth = 3;
 
     ctx.strokeRect(
@@ -193,15 +356,23 @@ app.get("/quote", async (req, res) => {
     );
 
 
-    // ==================================================
-    // NOMBRE / NICKNAME
-    // ==================================================
+    // ================================
+    // NICKNAME
+    // ================================
 
-    ctx.fillStyle = "#050505";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
+    ctx.fillStyle =
+      "#050505";
 
-    ctx.font = '48px "DejaVu Sans", Arial, sans-serif';
+    ctx.textAlign =
+      "left";
+
+    ctx.textBaseline =
+      "middle";
+
+
+    ctx.font =
+      '48px "DejaVu Sans", Arial, sans-serif';
+
 
     ctx.fillText(
       "—",
@@ -209,14 +380,27 @@ app.get("/quote", async (req, res) => {
       paperY + 75
     );
 
-    // Limitar nickname
-    let displayNickname = nickname;
 
-    if (displayNickname.length > 22) {
-      displayNickname = displayNickname.substring(0, 21) + "…";
+    let displayNickname =
+      nickname;
+
+
+    if (
+      displayNickname.length > 22
+    ) {
+
+      displayNickname =
+        displayNickname.substring(
+          0,
+          21
+        ) + "…";
+
     }
 
-    ctx.font = '54px "DejaVu Sans", Arial, sans-serif';
+
+    ctx.font =
+      '54px "DejaVu Sans", Arial, sans-serif';
+
 
     ctx.fillText(
       displayNickname,
@@ -225,12 +409,16 @@ app.get("/quote", async (req, res) => {
     );
 
 
-    // ==================================================
-    // @USERNAME
-    // ==================================================
+    // ================================
+    // USERNAME
+    // ================================
 
-    ctx.font = '25px "DejaVu Sans", Arial, sans-serif';
-    ctx.fillStyle = "#333333";
+    ctx.font =
+      '25px "DejaVu Sans", Arial, sans-serif';
+
+    ctx.fillStyle =
+      "#333333";
+
 
     ctx.fillText(
       "@" + username,
@@ -239,121 +427,220 @@ app.get("/quote", async (req, res) => {
     );
 
 
-    // ==================================================
-    // TEXTO DEL QUOTE
-    // ==================================================
+    // ================================
+    // AREA DEL QUOTE
+    // ================================
 
-    const quoteAreaX = paperX + 75;
-    const quoteAreaY = paperY + 170;
-    const quoteAreaWidth = paperWidth - 150;
-    const quoteAreaHeight = 400;
+    const quoteAreaX =
+      paperX + 75;
+
+    const quoteAreaY =
+      paperY + 170;
+
+    const quoteAreaWidth =
+      paperWidth - 150;
+
+    const quoteAreaHeight =
+      400;
 
 
-    // Función para dividir texto
-    function wrapText(text, fontSize) {
+    // ================================
+    // TEXTO + EMOJIS
+    // ================================
 
-      ctx.font = `bold ${fontSize}px "DejaVu Sans", Arial, sans-serif`;
+    function setQuoteFont(size) {
 
-      const words = text.split(/\s+/);
+      ctx.font =
+        `bold ${size}px "DejaVu Sans", "Noto Emoji", Arial, sans-serif`;
+
+    }
+
+
+    function wrapText(
+      text,
+      fontSize
+    ) {
+
+      setQuoteFont(
+        fontSize
+      );
+
+
+      const words =
+        text.split(/\s+/);
+
       const lines = [];
 
       let currentLine = "";
 
-      for (const word of words) {
 
-        const testLine = currentLine
-          ? currentLine + " " + word
-          : word;
+      for (
+        const word of words
+      ) {
 
-        const testWidth = ctx.measureText(testLine).width;
+        const testLine =
+          currentLine
+            ? currentLine + " " + word
+            : word;
 
-        if (testWidth <= quoteAreaWidth) {
-          currentLine = testLine;
+
+        const testWidth =
+          ctx.measureText(
+            testLine
+          ).width;
+
+
+        if (
+          testWidth <=
+          quoteAreaWidth
+        ) {
+
+          currentLine =
+            testLine;
+
         } else {
 
-          if (currentLine) {
-            lines.push(currentLine);
+          if (
+            currentLine
+          ) {
+
+            lines.push(
+              currentLine
+            );
+
           }
 
-          currentLine = word;
+          currentLine =
+            word;
         }
       }
 
-      if (currentLine) {
-        lines.push(currentLine);
+
+      if (
+        currentLine
+      ) {
+
+        lines.push(
+          currentLine
+        );
+
       }
+
 
       return lines;
     }
 
 
-    // ==================================================
-    // TAMAÑO AUTOMÁTICO DEL TEXTO
-    // ==================================================
+    // ================================
+    // AJUSTE AUTOMATICO
+    // ================================
 
     let fontSize = 90;
+
     let lines = [];
 
-    while (fontSize >= 30) {
 
-      lines = wrapText(text, fontSize);
+    while (
+      fontSize >= 30
+    ) {
 
-      const lineHeight = fontSize * 1.25;
-      const totalHeight = lines.length * lineHeight;
+      lines =
+        wrapText(
+          text,
+          fontSize
+        );
+
+
+      const lineHeight =
+        fontSize * 1.25;
+
+
+      const totalHeight =
+        lines.length *
+        lineHeight;
+
 
       if (
-        totalHeight <= quoteAreaHeight &&
+        totalHeight <=
+          quoteAreaHeight &&
         lines.length <= 8
       ) {
+
         break;
+
       }
+
 
       fontSize -= 4;
     }
 
 
-    // ==================================================
-    // DIBUJAR TEXTO CENTRADO
-    // ==================================================
+    setQuoteFont(
+      fontSize
+    );
 
-    ctx.font =
-      `bold ${fontSize}px "DejaVu Sans", Arial, sans-serif`;
 
-    ctx.fillStyle = "#050505";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
+    ctx.fillStyle =
+      "#050505";
 
-    const lineHeight = fontSize * 1.25;
+
+    ctx.textAlign =
+      "center";
+
+    ctx.textBaseline =
+      "middle";
+
+
+    const lineHeight =
+      fontSize * 1.25;
+
 
     const totalTextHeight =
-      lines.length * lineHeight;
+      lines.length *
+      lineHeight;
+
 
     let startY =
       quoteAreaY +
-      (quoteAreaHeight - totalTextHeight) / 2 +
+      (quoteAreaHeight -
+        totalTextHeight) /
+        2 +
       lineHeight / 2;
 
 
-    for (const line of lines) {
+    for (
+      const line of lines
+    ) {
 
       ctx.fillText(
         line,
-        quoteAreaX + quoteAreaWidth / 2,
+        quoteAreaX +
+          quoteAreaWidth / 2,
         startY
       );
 
-      startY += lineHeight;
+
+      startY +=
+        lineHeight;
+
     }
 
 
-    // ==================================================
-    // LÍNEA INFERIOR
-    // ==================================================
+    // ================================
+    // LINEA DEL FOOTER
+    // ================================
 
-    const lineY = paperY + paperHeight - 105;
+    const lineY =
+      paperY +
+      paperHeight -
+      105;
 
-    ctx.strokeStyle = "#222222";
+
+    ctx.strokeStyle =
+      "#222222";
+
     ctx.lineWidth = 2;
+
 
     ctx.beginPath();
 
@@ -363,46 +650,67 @@ app.get("/quote", async (req, res) => {
     );
 
     ctx.lineTo(
-      paperX + paperWidth - 70,
+      paperX +
+        paperWidth -
+        70,
       lineY
     );
 
     ctx.stroke();
 
 
-    // ==================================================
-    // GHOSSBOT - QUOTE
-    // ==================================================
+    // ================================
+    // FOOTER
+    // ================================
 
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
+    ctx.textAlign =
+      "left";
+
+    ctx.textBaseline =
+      "middle";
+
 
     ctx.font =
       '28px "DejaVu Sans", Arial, sans-serif';
 
-    ctx.fillStyle = "#111111";
+
+    ctx.fillStyle =
+      "#111111";
+
 
     ctx.fillText(
       "GhossBot - Quote",
       paperX + 70,
-      paperY + paperHeight - 58
+      paperY +
+        paperHeight -
+        58
     );
 
 
-    // ==================================================
+    // ================================
     // AVATAR
-    // ==================================================
+    // ================================
 
     try {
 
-      const avatarImage = await loadImage(avatar);
+      const avatarImage =
+        await loadImage(
+          avatar
+        );
 
-      const avatarX = vinylX;
-      const avatarY = vinylY;
 
-      const avatarRadius = 205;
+      const avatarX =
+        vinylX;
 
-      // Aro blanco
+      const avatarY =
+        vinylY;
+
+      const avatarRadius =
+        205;
+
+
+      // borde blanco
+
       ctx.beginPath();
 
       ctx.arc(
@@ -413,11 +721,14 @@ app.get("/quote", async (req, res) => {
         Math.PI * 2
       );
 
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle =
+        "#ffffff";
+
       ctx.fill();
 
 
-      // Recortar avatar en círculo
+      // recorte circular
+
       ctx.save();
 
       ctx.beginPath();
@@ -433,26 +744,38 @@ app.get("/quote", async (req, res) => {
       ctx.clip();
 
 
-      // Mantener proporción tipo "cover"
-      const imgWidth = avatarImage.width;
-      const imgHeight = avatarImage.height;
+      const imgWidth =
+        avatarImage.width;
 
-      const scale = Math.max(
-        (avatarRadius * 2) / imgWidth,
-        (avatarRadius * 2) / imgHeight
-      );
+      const imgHeight =
+        avatarImage.height;
 
-      const drawWidth = imgWidth * scale;
-      const drawHeight = imgHeight * scale;
+
+      const scale =
+        Math.max(
+          (avatarRadius * 2) /
+            imgWidth,
+          (avatarRadius * 2) /
+            imgHeight
+        );
+
+
+      const drawWidth =
+        imgWidth * scale;
+
+      const drawHeight =
+        imgHeight * scale;
+
 
       const drawX =
-        avatarX - drawWidth / 2;
+        avatarX -
+        drawWidth / 2;
 
       const drawY =
-        avatarY - drawHeight / 2;
+        avatarY -
+        drawHeight / 2;
 
 
-      // Imagen
       ctx.drawImage(
         avatarImage,
         drawX,
@@ -462,38 +785,62 @@ app.get("/quote", async (req, res) => {
       );
 
 
-      // Convertir visualmente a blanco y negro
-      const imageData = ctx.getImageData(
-        avatarX - avatarRadius,
-        avatarY - avatarRadius,
-        avatarRadius * 2,
-        avatarRadius * 2
-      );
+      // ================================
+      // BLANCO Y NEGRO
+      // ================================
 
-      const data = imageData.data;
+      const imageData =
+        ctx.getImageData(
+          avatarX -
+            avatarRadius,
+          avatarY -
+            avatarRadius,
+          avatarRadius * 2,
+          avatarRadius * 2
+        );
 
-      for (let i = 0; i < data.length; i += 4) {
+
+      const data =
+        imageData.data;
+
+
+      for (
+        let i = 0;
+        i < data.length;
+        i += 4
+      ) {
 
         const gray =
           0.299 * data[i] +
           0.587 * data[i + 1] +
           0.114 * data[i + 2];
 
-        data[i] = gray;
-        data[i + 1] = gray;
-        data[i + 2] = gray;
+
+        data[i] =
+          gray;
+
+        data[i + 1] =
+          gray;
+
+        data[i + 2] =
+          gray;
       }
+
 
       ctx.putImageData(
         imageData,
-        avatarX - avatarRadius,
-        avatarY - avatarRadius
+        avatarX -
+          avatarRadius,
+        avatarY -
+          avatarRadius
       );
+
 
       ctx.restore();
 
 
-      // Aro blanco encima del avatar
+      // borde
+
       ctx.beginPath();
 
       ctx.arc(
@@ -504,7 +851,9 @@ app.get("/quote", async (req, res) => {
         Math.PI * 2
       );
 
-      ctx.strokeStyle = "#ffffff";
+      ctx.strokeStyle =
+        "#ffffff";
+
       ctx.lineWidth = 9;
 
       ctx.stroke();
@@ -517,7 +866,7 @@ app.get("/quote", async (req, res) => {
         error.message
       );
 
-      // Si falla el avatar, mostramos círculo
+
       ctx.beginPath();
 
       ctx.arc(
@@ -528,8 +877,11 @@ app.get("/quote", async (req, res) => {
         Math.PI * 2
       );
 
-      ctx.fillStyle = "#444444";
+      ctx.fillStyle =
+        "#444444";
+
       ctx.fill();
+
 
       ctx.beginPath();
 
@@ -541,36 +893,49 @@ app.get("/quote", async (req, res) => {
         Math.PI * 2
       );
 
-      ctx.strokeStyle = "#ffffff";
+      ctx.strokeStyle =
+        "#ffffff";
+
       ctx.lineWidth = 9;
 
       ctx.stroke();
+
     }
 
 
-    // ==================================================
-    // GUARDAR IMAGEN
-    // ==================================================
+    // ================================
+    // GUARDAR QUOTE
+    // ================================
 
-    const id = crypto.randomBytes(12).toString("hex");
-
-    const buffer = canvas.toBuffer("image/png");
-
-    quotes.set(id, {
-      buffer: buffer,
-      created: Date.now()
-    });
+    const id =
+      crypto
+        .randomBytes(12)
+        .toString("hex");
 
 
-    // URL pública
+    const buffer =
+      canvas.toBuffer(
+        "image/png"
+      );
+
+
+    quotes.set(
+      id,
+      {
+        buffer: buffer,
+        created: Date.now()
+      }
+    );
+
+
     const baseUrl =
       `${req.protocol}://${req.get("host")}`;
+
 
     const imageUrl =
       `${baseUrl}/quote/${id}.png`;
 
 
-    // Respuesta
     res.json({
       success: true,
       url: imageUrl
@@ -581,9 +946,15 @@ app.get("/quote", async (req, res) => {
 
     console.error(error);
 
+
     res.status(500).json({
-      error: "Error generando el Quote.",
-      details: error.message
+
+      error:
+        "Error generando el Quote.",
+
+      details:
+        error.message
+
     });
 
   }
@@ -591,54 +962,89 @@ app.get("/quote", async (req, res) => {
 });
 
 
-// ======================================================
+// ================================
 // MOSTRAR IMAGEN
-// ======================================================
+// ================================
 
-app.get("/quote/:id.png", (req, res) => {
+app.get(
+  "/quote/:id.png",
+  (req, res) => {
 
-  const quote = quotes.get(req.params.id);
-
-  if (!quote) {
-    return res.status(404).send("Quote no encontrado o expirado.");
-  }
-
-  res.setHeader(
-    "Content-Type",
-    "image/png"
-  );
-
-  res.setHeader(
-    "Cache-Control",
-    "public, max-age=600"
-  );
-
-  res.send(quote.buffer);
-});
+    const quote =
+      quotes.get(
+        req.params.id
+      );
 
 
-// ======================================================
-// LIMPIAR IMÁGENES CADA 10 MINUTOS
-// ======================================================
+    if (!quote) {
 
-setInterval(() => {
+      return res
+        .status(404)
+        .send(
+          "Quote no encontrado o expirado."
+        );
 
-  const now = Date.now();
-
-  for (const [id, quote] of quotes) {
-
-    if (now - quote.created > 10 * 60 * 1000) {
-      quotes.delete(id);
     }
 
+
+    res.setHeader(
+      "Content-Type",
+      "image/png"
+    );
+
+
+    res.setHeader(
+      "Cache-Control",
+      "public, max-age=600"
+    );
+
+
+    res.send(
+      quote.buffer
+    );
+
   }
+);
 
-}, 60 * 1000);
+
+// ================================
+// LIMPIAR QUOTES
+// ================================
+
+setInterval(
+  () => {
+
+    const now =
+      Date.now();
 
 
-// ======================================================
-// INICIAR SERVIDOR
-// ======================================================
+    for (
+      const [id, quote]
+      of quotes
+    ) {
+
+      if (
+        now -
+          quote.created >
+        10 * 60 * 1000
+      ) {
+
+        quotes.delete(
+          id
+        );
+
+      }
+
+    }
+
+  },
+  60 * 1000
+);
+
+
+// ================================
+// SERVIDOR
+// ================================
 
 app.listen(
   PORT,
